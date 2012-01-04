@@ -1,120 +1,104 @@
-/* JSON parser based on the grammar described at http://json.org/. */
-
-/* ===== Syntactical Elements ===== */
+// parses model navigation with dot notation (example customer.address.zip)
 
 start
-  = _ object:object { return object; }
+  = model
 
-object
-  = "{" _ "}" _                 { return {};      }
-  / "{" _ members:members "}" _ { return members; }
+model
+  = left:compoundmodelpart "." right:modelpart { return left +'.' + right; }
+  / compoundmodelpart
 
-members
-  = head:pair tail:("," _ pair)* {
-      var result = {};
-      result[head[0]] = head[1];
-      for (var i = 0; i < tail.length; i++) {
-        result[tail[i][2][0]] = tail[i][2][1];
-      }
-      return result;
-    }
+compoundmodelpart
+  = left:modelpart "." right:modelpart { return left +'.'+ right; }
+  / modelpart
 
-pair
-  = name:string ":" _ value:value { return [name, value]; }
+modelpart "modelpart"
+  = modelpart:[a-zA-Z0-9_]+ { return modelpart.join(""); }
 
-array
-  = "[" _ "]" _                   { return [];       }
-  / "[" _ elements:elements "]" _ { return elements; }
 
-elements
-  = head:value tail:("," _ value)* {
-      var result = [head];
-      for (var i = 0; i < tail.length; i++) {
-        result.push(tail[i][2]);
-      }
-      return result;
-    }
 
-value
-  = string
-  / number
-  / object
-  / array
-  / "true" _  { return true;   }
-  / "false" _ { return false;  }
-  // FIXME: We can't return null here because that would mean parse failure.
-  / "null" _  { return "null"; }
+  // this adds the binding syntax around a model navigation
+  start
+  = binding
 
-/* ===== Lexical Elements ===== */
+binding
+= "@{" left:root right:model "}" {return left + right;}
+/ "@{"  model:model "}"  { return model; }
 
-string "string"
-  = '"' '"' _             { return "";    }
-  / '"' chars:chars '"' _ { return chars; }
+root
+  = ".." {return "..";}
 
-chars
-  = chars:char+ { return chars.join(""); }
+model
+  = left:compoundmodelpart "." right:modelpart { return left +'.' + right; }
+  / compoundmodelpart
 
-char
-  // In the original JSON grammar: "any-Unicode-character-except-"-or-\-or-control-character"
-  = [^"\\\0-\x1F\x7f]
-  / '\\"'  { return '"';  }
-  / "\\\\" { return "\\"; }
-  / "\\/"  { return "/";  }
-  / "\\b"  { return "\b"; }
-  / "\\f"  { return "\f"; }
-  / "\\n"  { return "\n"; }
-  / "\\r"  { return "\r"; }
-  / "\\t"  { return "\t"; }
-  / "\\u" h1:hexDigit h2:hexDigit h3:hexDigit h4:hexDigit {
-      return String.fromCharCode(parseInt("0x" + h1 + h2 + h3 + h4));
-    }
+compoundmodelpart
+  = left:modelpart "." right:modelpart { return left +'.'+ right; }
+  / modelpart
 
-number "number"
-  = int_:int frac:frac exp:exp _ { return parseFloat(int_ + frac + exp); }
-  / int_:int frac:frac _         { return parseFloat(int_ + frac);       }
-  / int_:int exp:exp _           { return parseFloat(int_ + exp);        }
-  / int_:int _                   { return parseFloat(int_);              }
+modelpart "modelpart"
+  = modelpart:[a-zA-Z0-9_]+ { return modelpart.join(""); }
 
-int
-  = digit19:digit19 digits:digits     { return digit19 + digits;       }
-  / digit:digit
-  / "-" digit19:digit19 digits:digits { return "-" + digit19 + digits; }
-  / "-" digit:digit                   { return "-" + digit;            }
 
-frac
-  = "." digits:digits { return "." + digits; }
 
-exp
-  = e:e digits:digits { return e + digits; }
+// added in relative window or autoup support
+start
+  = binding
 
-digits
-  = digits:digit+ { return digits.join(""); }
+binding
+= "@{" relbased:relbased "}" {return relbased;}
 
-e
-  = e:[eE] sign:[+-]? { return e + sign; }
+relbased
+= left:autoup right:model {return left + right;}
+/ left:window right:model {return left + right;}
+/ model:model  { return model; }
 
-/*
- * The following rules are not present in the original JSON gramar, but they are
- * assumed to exist implicitly.
- *
- * FIXME: Define them according to ECMA-262, 5th ed.
- */
+window
+ = "/" {return "/"}
 
-digit
-  = [0-9]
+autoup
+  = ".." {return "..";}
 
-digit19
-  = [1-9]
+model
+  = left:compoundmodelpart "." right:modelpart { return left +'.' + right; }
+  / compoundmodelpart
 
-hexDigit
-  = [0-9a-fA-F]
+compoundmodelpart
+  = left:modelpart "." right:modelpart { return left +'.'+ right; }
+  / modelpart
 
-/* ===== Whitespace ===== */
+modelpart "modelpart"
+  = modelpart:[a-zA-Z0-9_]+ { return modelpart.join(""); }
 
-_ "whitespace"
-  = whitespace*
 
-// Whitespace is undefined in the original JSON grammar, so I assume a simple
-// conventional definition consistent with ECMA-262, 5th ed.
-whitespace
-  = [ \t\n\r]
+// added inverse support
+start
+  = binding
+
+binding
+= "@{" left:inverse right:relbased "}" {return left + right;}
+/ "@{" relbased:relbased "}" {return relbased;}
+
+relbased
+= left:autoup right:model {return left + right;}
+/ left:window right:model {return left + right;}
+/ model:model  { return model; }
+
+inverse
+ = "!" {return "!"}
+
+window
+ = "/" {return "/"}
+
+autoup
+  = ".." {return "..";}
+
+model
+  = left:compoundmodelpart "." right:modelpart { return left +'.' + right; }
+  / compoundmodelpart
+
+compoundmodelpart
+  = left:modelpart "." right:modelpart { return left +'.'+ right; }
+  / modelpart
+
+modelpart "modelpart"
+  = modelpart:[a-zA-Z0-9_]+ { return modelpart.join(""); }

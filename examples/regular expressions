@@ -4,3 +4,36 @@ fieldname (including optional object)
 ^([a-zA-Z0-9_][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)*)*$
 
 
+
+start
+  = _ object:object { return object; }
+
+object
+  = "{" _ fieldname:fieldname "}" _ { return fieldname; }
+
+fieldname
+ = ([a-zA-Z0-9_][a-zA-Z0-9_]*(.[a-zA-Z0-9_]+)*)*
+
+/* ===== Whitespace ===== */
+
+_ "whitespace"
+  = whitespace*
+
+// Whitespace is undefined in the original JSON grammar, so I assume a simple
+// conventional definition consistent with ECMA-262, 5th ed.
+whitespace
+  = [ \t\n\r]
+  
+
+field "field"
+  =alphanumerics_:alphanumerics fric:fric _         { return alphanumerics_ + fric;       }
+  / alphanumerics_:alphanumerics _                   { return alphanumerics_;              }
+
+fric
+  = "." alphanumerics:alphanumerics { return "." + alphanumerics; }
+
+alphanumerics
+  = alphanumerics:alphanumeric+ { return alphanumerics.join(""); }
+
+alphanumeric
+ = [a-zA-Z0-9_]
