@@ -3,6 +3,9 @@
 fieldname (including optional object)
 ^([a-zA-Z0-9_][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)*)*$
 
+matches any string that does not contain @{...}
+^(?:(?!@{.*}).)*$
+
 
 
 start
@@ -37,3 +40,7 @@ alphanumerics
 
 alphanumeric
  = [a-zA-Z0-9_]
+
+
+ <<locale.key, blah, @{customer.name}, @{customer.number}>>
+ 
