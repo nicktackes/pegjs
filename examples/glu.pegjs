@@ -259,3 +259,82 @@ _ "whitespace"
 // conventional definition consistent with ECMA-262, 5th ed.
 whitespace
   = [ \t\n\r]
+
+  // this version supports up to
+
+  start
+= left:suffixed right:suffixed {return left + right;}
+/ suffixed
+
+suffixed
+= left:prefixed right:prefixed {return left + right;}
+/ prefixed
+
+prefixed
+= left:binding right:binding {return left + right;}
+/ binding
+
+binding
+= "@{" left:inverse right:relbased "}" {return left + right;}
+/ "@{" relbased:relbased "}" {return relbased;}
+/ chars
+/ ""
+
+relbased
+= left:autoup right:model {return left + right;}
+/ left:window right:model {return left + right;}
+/ model:model  { return model; }
+
+
+model
+  = left:compoundmodelpart "." right:modelpart { return left +'.' + right; }
+  / compoundmodelpart
+
+compoundmodelpart
+  = left:modelpart "." right:modelpart { return left +'.'+ right; }
+  / modelpart
+
+modelpart "modelpart"
+  = modelpart:[a-zA-Z0-9_]+ { return modelpart.join(""); }
+
+
+inverse
+ = "!" {return "!"}
+
+window
+ = "/" {return "/"}
+
+autoup
+  = ".." {return "..";}
+
+chars
+  = chars:char+ { return chars.join(""); }
+
+char
+  // In the original JSON grammar: "any-Unicode-character-except-"-or-\-or-control-character"
+  = [^@{}"\\\0-\x1F\x7f]
+  / '\\"'  { return '"';  }
+  / "\\\\" { return "\\"; }
+  / "\\/"  { return "/";  }
+  / "\\b"  { return "\b"; }
+  / "\\f"  { return "\f"; }
+  / "\\n"  { return "\n"; }
+  / "\\r"  { return "\r"; }
+  / "\\t"  { return "\t"; }
+  / "\\u" h1:hexDigit h2:hexDigit h3:hexDigit h4:hexDigit {
+      return String.fromCharCode(parseInt("0x" + h1 + h2 + h3 + h4));
+    }
+
+hexDigit
+  = [0-9a-fA-F]
+
+
+/* ===== Whitespace ===== */
+
+_ "whitespace"
+  = whitespace*
+
+// Whitespace is undefined in the original JSON grammar, so I assume a simple
+// conventional definition consistent with ECMA-262, 5th ed.
+whitespace
+  = [ \t\n\r]
